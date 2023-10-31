@@ -1,10 +1,10 @@
 //implement functions that execute SQL requests on the PostgreSQL database
 //like insert user, update user, select * from users, etc.
-import 'dart:convert';
 import 'package:crypt/crypt.dart';
 
 import 'package:logger/logger.dart';
 import 'package:postgres/postgres.dart';
+import 'package:sign_in_register_user_mgt_app/models/user.dart';
 
 class DatabaseHelper{
   Logger logger=Logger();
@@ -126,4 +126,35 @@ class DatabaseHelper{
       return false;
     }
   }
+
+  //authenticate user using email and crypt password
+  Future<User?> authenticateUser(String email, String password) async {
+    try {
+      var result = await connection.query('SELECT * FROM users WHERE email=@email;',
+          substitutionValues: {'email': email});
+      // Convert from Future<List<QueryRow>> to List<Map<String, dynamic>>
+      var users = result.map((row) {
+        Map<String, dynamic> users = {};
+        row.toColumnMap().forEach((key, value) {
+          users[key] = value;
+        });
+        return users;
+      }).toList();
+      if (users.isNotEmpty) {
+        var user = users.first;
+        //encrypt the password
+        password = encryptedPassword(password);
+        if (user['password'] == password) {
+          return User.fromJson(user);
+        }
+      }
+      return null;
+    } catch (e) {
+      // Handle any errors, e.g., logging an error message or return an empty list.
+      logger.e("Error in authenticateUser: $e");
+      return null;
+    }
+  }
+
+
 }
